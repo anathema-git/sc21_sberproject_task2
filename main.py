@@ -129,21 +129,24 @@ def work_img_create(img, con, final_elem_array):
         for cont in con:
                 sm = cv2.arcLength(cont, True)
                 apd = cv2.approxPolyDP(cont, 0.0001*sm, True)
+                # visual contours 
                 # cv2.drawContours(img, [apd], -1, (254, 19, 186), 4)
+                # visual columns and rows  
                 # cv2.putText(img, f'{final_elem_array[q].getcol()}:{final_elem_array[q].getrow()}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
+                # visual id
                 cv2.putText(img, f'{q}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
                 q += 1
         return img
 
-def draw_way(work_img):
+def draw_way(work_img, way):
         box = []
         color_ex = [(0, 255, 255), (0, 204, 0), (255, 0 ,0), (127, 0 ,255), (0, 128, 255), (92, 92, 205), (130, 0, 75)]
 
         for i in con:
                 box.append(i[0][0].tolist())
 
-        for i in range(len(top) - 1):
-                cv2.line(work_img, box[top[i]], box[top[i + 1]], color_ex[i % len(color_ex)], thickness=2)
+        for i in range(len(way) - 1):
+                cv2.line(work_img, box[way[i]], box[way[i + 1]], color_ex[i % len(color_ex)], thickness=2)
 
 def way_search(graph, con):
         def hui(graph, id, top, marks = [False] * len(con)):
@@ -165,6 +168,7 @@ def way_search(graph, con):
                 if len(top) == len(con): return top
 
 if __name__ == '__main__':
+        # way to image
         path = "images/7sizeinput.jpg"
         img_input = cv2.imread(path)
         img = image_transform(img_input)
@@ -176,6 +180,6 @@ if __name__ == '__main__':
 
         way = way_search(graph, con)
         print(way)
-        
+        # draw_way() # trial version: ugly
         cv2.imshow('result.jpg', work_img)
         cv2.waitKey(0)

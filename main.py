@@ -14,7 +14,7 @@ def contours_search(img):
         return con
 
 def image_scanning(img_input, con):
-        global relation
+        global relation, d
 
         def isequal_perimeter(a, b):
                 if (max((a - b), (b - a)) > min(a, b) * 0.05): return False
@@ -49,6 +49,8 @@ def image_scanning(img_input, con):
 
         q = 0
         for cont in con:
+                sm = cv2.arcLength(cont, True)
+                apd = cv2.approxPolyDP(cont, 0.0001*sm, True)
                 perimeter = cv2.arcLength(cont, True)
                 if len(perimeters) != 0:
                         f = True
@@ -68,6 +70,7 @@ def image_scanning(img_input, con):
                 col = find(sorted_cols, cont) // int(len(con) ** 0.5)
                 id = row + col * int(len(con) ** 0.5)
                 relation[q] = id
+                d[id] = apd
                 elem_array.append([perimeter, color, col, row, id])
                 q += 1
 
@@ -144,22 +147,13 @@ def work_img_create(img, con, final_elem_array):
                 # visual columns and rows  
                 # cv2.putText(img, f'{final_elem_array[q].getcol()}:{final_elem_array[q].getrow()}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
                 # visual id
-                cv2.putText(img, f'{final_elem_array[q].getid()}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
+                # cv2.putText(img, f'{final_elem_array[q].getid()}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
+                # cv2.putText(img, f'{q}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
                 q += 1
         return img
 
-def draw_way(work_img, way):
-        box = []
-        color_ex = [(0, 255, 255), (0, 204, 0), (255, 0 ,0), (127, 0 ,255), (0, 128, 255), (92, 92, 205), (130, 0, 75)]
-
-        for i in con:
-                box.append(i[0][0].tolist())
-
-        for i in range(len(way) - 1):
-                cv2.line(work_img, box[way[i]], box[way[i + 1]], color_ex[i % len(color_ex)], thickness=2)
-
 def way_search(graph, con):
-        def hui(graph, id, top, marks = [False] * len(con)):
+        def hui(graph, id, top, marks):
                 top.append(id)
                 marks[id] = True
                 for i in graph[id]:
@@ -173,11 +167,13 @@ def way_search(graph, con):
                 return top
         
         for id in graph:
+                marks = [False] * len(con)
                 top = []
-                top = hui(graph, id, top)
+                top = hui(graph, id, top, marks)
                 if len(top) == len(con): return top
 
 if __name__ == '__main__':
+        d = {}
         relation = {}
         # way to image
         path = "images/7sizeinput.jpg"
@@ -188,13 +184,23 @@ if __name__ == '__main__':
         matrix = tomatrix(final_elem_array)
         graph = matrix_to_graph(matrix)
         work_img = work_img_create(img_input, con, final_elem_array)
-        
+
         way_q = way_search(graph, con)
         way_id = []
         for q in way_q:
                 way_id.append(relation[q])
         print(way_id)
         
-        # draw_way() # trial version: ugly
-        cv2.imshow('result.jpg', work_img)
-        cv2.waitKey(0)
+        q = 0
+        while True:
+                img_new = img_input.copy()
+                cv2.drawContours(img_new, [d[way_id[q]]], -1, (254, 19, 186), 4)
+                cv2.imshow('screen', img_new)
+                q += 1
+                cv2.waitKey(1000)
+                if (cv2.waitKey(1) & 0xFF) == ord('q'):
+                        cv2.destroyAllWindows()
+                        break
+                if q == len(way_id): break
+        # cv2.imshow('result.jpg', img_input)
+        # cv2.waitKey(0)

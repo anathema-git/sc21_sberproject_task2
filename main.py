@@ -13,7 +13,8 @@ def contours_search(img):
         con = cv2.findContours(closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
         return con
 
-def image_scanning(img_input, img, con):
+def image_scanning(img_input, con):
+        global relation
 
         def isequal_perimeter(a, b):
                 if (max((a - b), (b - a)) > min(a, b) * 0.05): return False
@@ -41,10 +42,12 @@ def image_scanning(img_input, img, con):
         perimeters = []
         colors = []
         elem_array = []
+        
 
         sorted_rows = sorted(con, key=lambda x: int(x[0][0].tolist()[0]))
         sorted_cols = sorted(con, key=lambda x: int(x[0][0].tolist()[1]))
 
+        q = 0
         for cont in con:
                 perimeter = cv2.arcLength(cont, True)
                 if len(perimeters) != 0:
@@ -61,8 +64,12 @@ def image_scanning(img_input, img, con):
                                 if isequal_colour(color, colr): color = colr; f = False
                         if f: colors.append(color)
                 else: colors.append(color)
-
-                elem_array.append([perimeter, color, find(sorted_cols, cont) // int(len(con) ** 0.5), find(sorted_rows, cont) // int(len(con) ** 0.5)])
+                row = find(sorted_rows, cont) // int(len(con) ** 0.5)
+                col = find(sorted_cols, cont) // int(len(con) ** 0.5)
+                id = row + col * int(len(con) ** 0.5)
+                relation[q] = id
+                elem_array.append([perimeter, color, col, row, id])
+                q += 1
 
         return elem_array
 
@@ -73,16 +80,19 @@ def get_final_elem_array(elem_array):
                 color_type = None
                 row = None
                 col = None
-                def __init__(self, shape_type, color_type, col, row) -> None:
+                id = None
+                def __init__(self, shape_type, color_type, col, row, id) -> None:
                         self.shape_type = shape_type
                         self.color_type = color_type
                         self.row = row
                         self.col = col
+                        self.id = id
                 
                 def getcolor(self): return self.color_type
                 def getshape(self): return self.shape_type
                 def getrow(self): return self.row
                 def getcol(self): return self.col
+                def getid(self): return self.id
 
         final_elem_array = []
         shape_list = []
@@ -94,7 +104,7 @@ def get_final_elem_array(elem_array):
                         if shape_list[i] == item[0]: shape_type = i
                 for i in range(len(color_list)):
                         if color_list[i] == item[1]: color_type = i
-                final_elem_array.append(elem(shape_type, color_type, item[2], item[3]))
+                final_elem_array.append(elem(shape_type, color_type, item[2], item[3], item[4]))
         return final_elem_array
 
 def tomatrix(final_elem_array):
@@ -134,7 +144,7 @@ def work_img_create(img, con, final_elem_array):
                 # visual columns and rows  
                 # cv2.putText(img, f'{final_elem_array[q].getcol()}:{final_elem_array[q].getrow()}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
                 # visual id
-                cv2.putText(img, f'{q}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
+                cv2.putText(img, f'{final_elem_array[q].getid()}', apd[0][0], cv2.FONT_HERSHEY_TRIPLEX, 1, (254, 19, 186), 1)
                 q += 1
         return img
 
@@ -168,18 +178,23 @@ def way_search(graph, con):
                 if len(top) == len(con): return top
 
 if __name__ == '__main__':
+        relation = {}
         # way to image
         path = "images/7sizeinput.jpg"
         img_input = cv2.imread(path)
         img = image_transform(img_input)
         con = contours_search(img)
-        final_elem_array = get_final_elem_array(image_scanning(img_input, img, con))
+        final_elem_array = get_final_elem_array(image_scanning(img_input, con))
         matrix = tomatrix(final_elem_array)
         graph = matrix_to_graph(matrix)
         work_img = work_img_create(img_input, con, final_elem_array)
-
-        way = way_search(graph, con)
-        print(way)
+        
+        way_q = way_search(graph, con)
+        way_id = []
+        for q in way_q:
+                way_id.append(relation[q])
+        print(way_id)
+        
         # draw_way() # trial version: ugly
         cv2.imshow('result.jpg', work_img)
         cv2.waitKey(0)
